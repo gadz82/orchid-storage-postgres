@@ -36,7 +36,8 @@ class PostgresMigrationRunner(OrchidMigrationRunner):
     async def record_version(self, conn: Any, version: str, description: str) -> None:
         await conn.execute(
             "INSERT INTO _migrations (version, description) VALUES ($1, $2)",
-            version, description,
+            version,
+            description,
         )
 
     async def remove_version(self, conn: Any, version: str) -> None:

@@ -77,7 +77,12 @@ class OrchidPostgresChatStorage(OrchidChatStorage):
             await conn.execute(
                 "INSERT INTO chat_sessions (id, tenant_id, user_id, title, created_at, updated_at) "
                 "VALUES ($1, $2, $3, $4, $5, $6)",
-                chat.id, chat.tenant_id, chat.user_id, chat.title, now, now,
+                chat.id,
+                chat.tenant_id,
+                chat.user_id,
+                chat.title,
+                now,
+                now,
             )
         return chat
 
@@ -88,16 +93,17 @@ class OrchidPostgresChatStorage(OrchidChatStorage):
     ) -> list[OrchidChatSession]:
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM chat_sessions WHERE tenant_id = $1 AND user_id = $2 "
-                "ORDER BY updated_at DESC",
-                tenant_id, user_id,
+                "SELECT * FROM chat_sessions WHERE tenant_id = $1 AND user_id = $2 ORDER BY updated_at DESC",
+                tenant_id,
+                user_id,
             )
         return [_row_to_session(r) for r in rows]
 
     async def get_chat(self, chat_id: str) -> OrchidChatSession | None:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT * FROM chat_sessions WHERE id = $1", chat_id,
+                "SELECT * FROM chat_sessions WHERE id = $1",
+                chat_id,
             )
         return _row_to_session(row) if row else None
 
@@ -109,14 +115,17 @@ class OrchidPostgresChatStorage(OrchidChatStorage):
         async with self._pool.acquire() as conn:
             await conn.execute(
                 "UPDATE chat_sessions SET title = $1, updated_at = $2 WHERE id = $3",
-                title, utcnow(), chat_id,
+                title,
+                utcnow(),
+                chat_id,
             )
 
     async def mark_shared(self, chat_id: str) -> None:
         async with self._pool.acquire() as conn:
             await conn.execute(
                 "UPDATE chat_sessions SET is_shared = TRUE, updated_at = $1 WHERE id = $2",
-                utcnow(), chat_id,
+                utcnow(),
+                chat_id,
             )
 
     # ── Messages ─────────────────────────────────────────────
@@ -143,12 +152,18 @@ class OrchidPostgresChatStorage(OrchidChatStorage):
             await conn.execute(
                 "INSERT INTO chat_messages (id, chat_id, role, content, agents_used, created_at, metadata) "
                 "VALUES ($1, $2, $3, $4, $5, $6, $7)",
-                msg.id, msg.chat_id, msg.role, msg.content,
-                json.dumps(msg.agents_used), now, json.dumps(msg.metadata),
+                msg.id,
+                msg.chat_id,
+                msg.role,
+                msg.content,
+                json.dumps(msg.agents_used),
+                now,
+                json.dumps(msg.metadata),
             )
             await conn.execute(
                 "UPDATE chat_sessions SET updated_at = $1 WHERE id = $2",
-                now, chat_id,
+                now,
+                chat_id,
             )
         return msg
 
@@ -160,9 +175,10 @@ class OrchidPostgresChatStorage(OrchidChatStorage):
     ) -> list[OrchidChatMessage]:
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM chat_messages WHERE chat_id = $1 ORDER BY created_at ASC "
-                "LIMIT $2 OFFSET $3",
-                chat_id, limit, offset,
+                "SELECT * FROM chat_messages WHERE chat_id = $1 ORDER BY created_at ASC LIMIT $2 OFFSET $3",
+                chat_id,
+                limit,
+                offset,
             )
         return [_row_to_message(r) for r in rows]
 
@@ -182,7 +198,10 @@ class OrchidPostgresChatStorage(OrchidChatStorage):
                 "INSERT INTO conversation_summaries (chat_id, summary_text, turn_number, updated_at) "
                 "VALUES ($1, $2, $3, $4) "
                 "ON CONFLICT (chat_id) DO UPDATE SET summary_text = $2, turn_number = $3, updated_at = $4",
-                chat_id, summary, turn_number, utcnow(),
+                chat_id,
+                summary,
+                turn_number,
+                utcnow(),
             )
 
 
