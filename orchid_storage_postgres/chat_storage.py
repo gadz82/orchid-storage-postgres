@@ -16,7 +16,7 @@ from typing import Any
 from orchid_ai.persistence.base import OrchidChatStorage
 from orchid_ai.persistence.models import OrchidChatMessage, OrchidChatSession, utcnow
 
-from .migrations import MIGRATIONS_PACKAGE, PostgresMigrationRunner
+from .migrations import PostgresMigrationRunner
 
 logger = logging.getLogger(__name__)
 
