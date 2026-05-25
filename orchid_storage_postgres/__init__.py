@@ -37,4 +37,3 @@ def _register() -> None:
     register_visibility_fragment("postgres", _build_postgres_filter)
     register_checkpointer("postgres", _build_postgres_checkpointer)
     logger.debug("[orchid-storage-postgres] Registered visibility fragment + checkpointer")
-
