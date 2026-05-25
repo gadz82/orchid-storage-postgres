@@ -6,8 +6,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from langgraph.checkpoint.base import BaseCheckpointSaver
-
 
 class TestBuildPostgresCheckpointer:
     @pytest.mark.asyncio
@@ -20,8 +18,7 @@ class TestBuildPostgresCheckpointer:
     async def test_missing_package_raises_import_error(self):
         with patch.dict("sys.modules", {"langgraph.checkpoint.postgres": None}):
             with pytest.raises(ImportError):
-                from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-                AsyncPostgresSaver.from_conn_string("postgresql://localhost/db")
+                from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # noqa: F401
 
 
 class TestRegistration:

@@ -30,10 +30,19 @@ async def _build_postgres_checkpointer(dsn: str):
 
 
 def _register() -> None:
-    """Entry-point callable — registers the postgres visibility fragment."""
-    from orchid_ai.checkpointing.factory import register_checkpointer
-    from orchid_ai.events.visibility import register_visibility_fragment
+    """Entry-point callable — registers the postgres visibility fragment and checkpointer."""
+    try:
+        from orchid_ai.events.visibility import register_visibility_fragment
 
-    register_visibility_fragment("postgres", _build_postgres_filter)
-    register_checkpointer("postgres", _build_postgres_checkpointer)
-    logger.debug("[orchid-storage-postgres] Registered visibility fragment + checkpointer")
+        register_visibility_fragment("postgres", _build_postgres_filter)
+        logger.debug("[orchid-storage-postgres] Registered visibility fragment")
+    except ImportError:
+        logger.debug("[orchid-storage-postgres] Skipping visibility fragment (not in this orchid-ai version)")
+
+    try:
+        from orchid_ai.checkpointing.factory import register_checkpointer
+
+        register_checkpointer("postgres", _build_postgres_checkpointer)
+        logger.debug("[orchid-storage-postgres] Registered checkpointer")
+    except ImportError:
+        logger.debug("[orchid-storage-postgres] Skipping checkpointer (not in this orchid-ai version)")
