@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 
-__version__ = "0.0.0"
+__version__ = "1.0.0"
 
 from .chat_storage import OrchidPostgresChatStorage
 from .visibility import _build_postgres_filter
