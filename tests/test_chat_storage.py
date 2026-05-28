@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from orchid_ai.persistence.models import OrchidChatMessage, OrchidChatSession
 
 from orchid_storage_postgres.chat_storage import OrchidPostgresChatStorage, _row_to_message, _row_to_session
 
