@@ -94,9 +94,7 @@ class PostgresSignalQueue(OrchidSignalQueue):
             try:
                 import asyncpg
             except ImportError as exc:  # pragma: no cover
-                raise ImportError(
-                    "PostgresSignalQueue requires asyncpg. Install via: pip install asyncpg"
-                ) from exc
+                raise ImportError("PostgresSignalQueue requires asyncpg. Install via: pip install asyncpg") from exc
 
             assert self._dsn is not None
             self._pool = await asyncpg.create_pool(

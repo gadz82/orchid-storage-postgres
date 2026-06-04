@@ -80,9 +80,7 @@ class PostgresEventStorage:
             try:
                 import asyncpg
             except ImportError as exc:  # pragma: no cover
-                raise ImportError(
-                    "PostgresEventStorage requires asyncpg. Install via: pip install asyncpg"
-                ) from exc
+                raise ImportError("PostgresEventStorage requires asyncpg. Install via: pip install asyncpg") from exc
 
             assert self._dsn is not None
             self._pool = await asyncpg.create_pool(
@@ -480,8 +478,7 @@ class PostgresTriggerStore(OrchidTriggerStore):
     async def latest(self, trigger_id: str) -> OrchidTriggerRecord | None:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT * FROM triggers WHERE trigger_id = $1 AND deleted_at IS NULL "
-                "ORDER BY version DESC LIMIT 1",
+                "SELECT * FROM triggers WHERE trigger_id = $1 AND deleted_at IS NULL ORDER BY version DESC LIMIT 1",
                 trigger_id,
             )
         return _row_to_trigger(row) if row is not None else None

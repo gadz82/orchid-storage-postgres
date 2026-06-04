@@ -50,9 +50,7 @@ class OrchidPostgresConfigStorage(OrchidConfigStorage):
         try:
             import asyncpg
         except ImportError as exc:  # pragma: no cover
-            raise ImportError(
-                "OrchidPostgresConfigStorage requires asyncpg. Install via: pip install asyncpg"
-            ) from exc
+            raise ImportError("OrchidPostgresConfigStorage requires asyncpg. Install via: pip install asyncpg") from exc
 
         self._pool = await asyncpg.create_pool(self._dsn, min_size=2, max_size=10)
         async with self._pool.acquire() as conn:
