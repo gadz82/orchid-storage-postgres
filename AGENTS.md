@@ -108,6 +108,8 @@ call is mocked.  The `_mock_pool()` helper in each test file builds an
 cd orchid-storage-postgres
 pip install -e ".[dev]"
 pytest tests/ -x
+ruff check orchid_storage_postgres/ tests/
+ruff format orchid_storage_postgres/ tests/
 ```
 
 ## Common Pitfalls
