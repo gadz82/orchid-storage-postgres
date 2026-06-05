@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import logging
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 from .chat_storage import OrchidPostgresChatStorage
 from .config_storage import OrchidPostgresConfigStorage
