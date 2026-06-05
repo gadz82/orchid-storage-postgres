@@ -19,7 +19,7 @@ classifiers = [
 ]
 keywords = ["ai", "agents", "storage", "postgresql", "asyncpg"]
 dependencies = [
-    "orchid-ai>=1.8.6",
+    "orchid-ai>=1.8.8",
     "asyncpg>=0.29.0",
     "langgraph-checkpoint-postgres>=2.0.0",
 ]
