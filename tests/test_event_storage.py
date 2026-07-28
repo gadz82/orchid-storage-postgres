@@ -229,9 +229,19 @@ class TestRowMappers:
             "relay_status": "published",
         }[k]
         row.keys = lambda: [
-            "signal_id", "type", "source", "payload", "tenant_key", "user_id",
-            "correlation_id", "dedupe_key", "identity_claim", "chat_binding",
-            "occurred_at", "persisted_at", "relay_status",
+            "signal_id",
+            "type",
+            "source",
+            "payload",
+            "tenant_key",
+            "user_id",
+            "correlation_id",
+            "dedupe_key",
+            "identity_claim",
+            "chat_binding",
+            "occurred_at",
+            "persisted_at",
+            "relay_status",
         ]
         signal = _row_to_signal(row)
         assert isinstance(signal, Signal)
