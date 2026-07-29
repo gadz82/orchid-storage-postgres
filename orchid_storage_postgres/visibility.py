@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from orchid_ai.events.visibility import _Filter  # noqa: PLC2701
+from orchid_ai.events.visibility import _Filter
 
 
 def _build_postgres_filter(auth: Any) -> _Filter:

@@ -20,8 +20,8 @@ import datetime as _dt
 import json
 import logging
 import uuid as _uuid
-from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, Any
 
 from orchid_ai.core.events.errors import SignalDuplicateError
 from orchid_ai.core.events.job import JobRun, JobSpec, JobStatus
@@ -54,7 +54,7 @@ class PostgresEventStorage:
     def __init__(
         self,
         *,
-        pool: "asyncpg.Pool | None" = None,
+        pool: asyncpg.Pool | None = None,
         dsn: str | None = None,
         extra_migrations_package: str | None = None,
         min_pool_size: int = 2,
@@ -63,7 +63,7 @@ class PostgresEventStorage:
         if (pool is None) == (dsn is None):
             raise ValueError("PostgresEventStorage requires exactly one of pool= or dsn=")
         self._owned_pool = pool is None
-        self._pool: "asyncpg.Pool | None" = pool
+        self._pool: asyncpg.Pool | None = pool
         self._dsn = dsn
         self._min_pool_size = min_pool_size
         self._max_pool_size = max_pool_size
@@ -103,25 +103,25 @@ class PostgresEventStorage:
             self._pool = None
 
     @property
-    def signals(self) -> "PostgresSignalStore":
+    def signals(self) -> PostgresSignalStore:
         if self._signals is None:
             raise RuntimeError("PostgresEventStorage used before init_db()")
         return self._signals
 
     @property
-    def jobs(self) -> "PostgresJobStore":
+    def jobs(self) -> PostgresJobStore:
         if self._jobs is None:
             raise RuntimeError("PostgresEventStorage used before init_db()")
         return self._jobs
 
     @property
-    def schedules(self) -> "PostgresScheduleStore":
+    def schedules(self) -> PostgresScheduleStore:
         if self._schedules is None:
             raise RuntimeError("PostgresEventStorage used before init_db()")
         return self._schedules
 
     @property
-    def triggers(self) -> "PostgresTriggerStore":
+    def triggers(self) -> PostgresTriggerStore:
         if self._triggers is None:
             raise RuntimeError("PostgresEventStorage used before init_db()")
         return self._triggers
@@ -131,7 +131,7 @@ class PostgresEventStorage:
 
 
 class PostgresSignalStore(OrchidSignalStore):
-    def __init__(self, *, pool: "asyncpg.Pool") -> None:
+    def __init__(self, *, pool: asyncpg.Pool) -> None:
         self._pool = pool
 
     async def insert(self, signal: Signal, *, tx: DBTransaction | None = None) -> Signal:
@@ -242,7 +242,7 @@ class PostgresSignalStore(OrchidSignalStore):
 
 
 class PostgresJobStore(OrchidJobStore):
-    def __init__(self, *, pool: "asyncpg.Pool") -> None:
+    def __init__(self, *, pool: asyncpg.Pool) -> None:
         self._pool = pool
 
     async def insert(self, run: JobRun) -> JobRun:
@@ -390,7 +390,7 @@ class PostgresJobStore(OrchidJobStore):
 
 
 class PostgresScheduleStore(OrchidScheduleStore):
-    def __init__(self, *, pool: "asyncpg.Pool") -> None:
+    def __init__(self, *, pool: asyncpg.Pool) -> None:
         self._pool = pool
 
     async def upsert(self, record: OrchidScheduleRecord) -> None:
@@ -459,7 +459,7 @@ class PostgresScheduleStore(OrchidScheduleStore):
 
 
 class PostgresTriggerStore(OrchidTriggerStore):
-    def __init__(self, *, pool: "asyncpg.Pool") -> None:
+    def __init__(self, *, pool: asyncpg.Pool) -> None:
         self._pool = pool
 
     async def insert_version(self, record: OrchidTriggerRecord) -> None:
@@ -506,7 +506,7 @@ class PostgresTriggerStore(OrchidTriggerStore):
 # ── Helpers ──────────────────────────────────────────────────
 
 
-def _conn_from_tx(tx: DBTransaction | None) -> "asyncpg.Connection | None":
+def _conn_from_tx(tx: DBTransaction | None) -> asyncpg.Connection | None:
     if isinstance(tx, _PostgresDBTransaction):
         return tx.conn
     return None
@@ -538,7 +538,7 @@ def _row_to_signal(row: Any) -> Signal:
         correlation_id=row["correlation_id"],
         dedupe_key=row["dedupe_key"],
         identity_claim=_maybe_load_jsonb(row["identity_claim"]),
-        chat_binding=_maybe_load_jsonb(row["chat_binding"]) if "chat_binding" in row.keys() else None,
+        chat_binding=_maybe_load_jsonb(row["chat_binding"]) if "chat_binding" in row else None,
         relay_status=row["relay_status"],
     )
 

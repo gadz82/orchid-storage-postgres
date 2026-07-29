@@ -28,8 +28,9 @@ from __future__ import annotations
 import datetime as _dt
 import logging
 import uuid as _uuid
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, AsyncIterator
+from typing import TYPE_CHECKING
 
 from orchid_ai.core.events.queue import (
     DBTransaction,
@@ -53,7 +54,7 @@ class _PostgresDBTransaction(DBTransaction):
 
     __slots__ = ("conn", "pending_notifies")
 
-    def __init__(self, conn: "asyncpg.Connection") -> None:
+    def __init__(self, conn: asyncpg.Connection) -> None:
         self.conn = conn
         self.pending_notifies: list[str] = []
 
@@ -64,7 +65,7 @@ class PostgresSignalQueue(OrchidSignalQueue):
     def __init__(
         self,
         *,
-        pool: "asyncpg.Pool | None" = None,
+        pool: asyncpg.Pool | None = None,
         dsn: str | None = None,
         extra_migrations_package: str | None = None,
         max_attempts: int = 5,
@@ -76,7 +77,7 @@ class PostgresSignalQueue(OrchidSignalQueue):
         if (pool is None) == (dsn is None):
             raise ValueError("PostgresSignalQueue requires exactly one of pool= or dsn=")
         self._owned_pool = pool is None
-        self._pool: "asyncpg.Pool | None" = pool
+        self._pool: asyncpg.Pool | None = pool
         self._dsn = dsn
         self._max_attempts = max_attempts
         self._notify_enabled = notify_enabled
@@ -111,7 +112,7 @@ class PostgresSignalQueue(OrchidSignalQueue):
             self._pool = None
 
     @property
-    def pool(self) -> "asyncpg.Pool":
+    def pool(self) -> asyncpg.Pool:
         if self._pool is None:
             raise RuntimeError("PostgresSignalQueue used before init_db() — pool is None")
         return self._pool
@@ -200,10 +201,9 @@ class PostgresSignalQueue(OrchidSignalQueue):
         return str(msg_id)
 
     async def dequeue(self, *, batch_size: int, lease_seconds: int) -> list[QueuedSignal]:
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                rows = await conn.fetch(
-                    """
+        async with self.pool.acquire() as conn, conn.transaction():
+            rows = await conn.fetch(
+                """
                     UPDATE signal_queue
                        SET lease_until = now() + ($1 || ' seconds')::interval,
                            attempt     = attempt + 1
@@ -218,9 +218,9 @@ class PostgresSignalQueue(OrchidSignalQueue):
                     RETURNING queue_msg_id, signal_id, enqueued_at,
                               lease_until, attempt
                     """,
-                    str(lease_seconds),
-                    batch_size,
-                )
+                str(lease_seconds),
+                batch_size,
+            )
         return [
             QueuedSignal(
                 queue_msg_id=str(r["queue_msg_id"]),
@@ -240,55 +240,53 @@ class PostgresSignalQueue(OrchidSignalQueue):
             )
 
     async def nack(self, queue_msg_id: str, *, retry_after_seconds: int) -> None:
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                row = await conn.fetchrow(
-                    "SELECT signal_id, attempt FROM signal_queue WHERE queue_msg_id = $1",
-                    _uuid.UUID(queue_msg_id),
-                )
-                if row is None:
-                    return
-                attempt = int(row["attempt"])
-                if attempt >= self._max_attempts:
-                    await self._move_to_dlq_locked(
-                        conn,
-                        queue_msg_id=queue_msg_id,
-                        signal_id=row["signal_id"],
-                        attempts=attempt,
-                        reason="max attempts exceeded",
-                    )
-                    return
-                await conn.execute(
-                    "UPDATE signal_queue "
-                    "   SET lease_until = NULL, "
-                    "       visible_after = now() + ($1 || ' seconds')::interval "
-                    " WHERE queue_msg_id = $2",
-                    str(retry_after_seconds),
-                    _uuid.UUID(queue_msg_id),
-                )
-
-    async def dead_letter(self, queue_msg_id: str, *, reason: str) -> None:
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                row = await conn.fetchrow(
-                    "SELECT signal_id, attempt FROM signal_queue WHERE queue_msg_id = $1",
-                    _uuid.UUID(queue_msg_id),
-                )
-                if row is None:
-                    return
+        async with self.pool.acquire() as conn, conn.transaction():
+            row = await conn.fetchrow(
+                "SELECT signal_id, attempt FROM signal_queue WHERE queue_msg_id = $1",
+                _uuid.UUID(queue_msg_id),
+            )
+            if row is None:
+                return
+            attempt = int(row["attempt"])
+            if attempt >= self._max_attempts:
                 await self._move_to_dlq_locked(
                     conn,
                     queue_msg_id=queue_msg_id,
                     signal_id=row["signal_id"],
-                    attempts=int(row["attempt"]),
-                    reason=reason,
+                    attempts=attempt,
+                    reason="max attempts exceeded",
                 )
+                return
+            await conn.execute(
+                "UPDATE signal_queue "
+                "   SET lease_until = NULL, "
+                "       visible_after = now() + ($1 || ' seconds')::interval "
+                " WHERE queue_msg_id = $2",
+                str(retry_after_seconds),
+                _uuid.UUID(queue_msg_id),
+            )
+
+    async def dead_letter(self, queue_msg_id: str, *, reason: str) -> None:
+        async with self.pool.acquire() as conn, conn.transaction():
+            row = await conn.fetchrow(
+                "SELECT signal_id, attempt FROM signal_queue WHERE queue_msg_id = $1",
+                _uuid.UUID(queue_msg_id),
+            )
+            if row is None:
+                return
+            await self._move_to_dlq_locked(
+                conn,
+                queue_msg_id=queue_msg_id,
+                signal_id=row["signal_id"],
+                attempts=int(row["attempt"]),
+                reason=reason,
+            )
 
     # ── Helpers ──────────────────────────────────────────────
 
     async def _move_to_dlq_locked(
         self,
-        conn: "asyncpg.Connection",
+        conn: asyncpg.Connection,
         *,
         queue_msg_id: str,
         signal_id: _uuid.UUID,
@@ -335,7 +333,7 @@ class PostgresSignalQueue(OrchidSignalQueue):
             return int(await conn.fetchval("SELECT COUNT(*) FROM signal_queue_dead_letter"))
 
 
-def _conn_from_tx(tx: DBTransaction) -> "asyncpg.Connection | None":
+def _conn_from_tx(tx: DBTransaction) -> asyncpg.Connection | None:
     if isinstance(tx, _PostgresDBTransaction):
         return tx.conn
     return None

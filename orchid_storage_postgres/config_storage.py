@@ -95,28 +95,27 @@ class OrchidPostgresConfigStorage(OrchidConfigStorage):
         return _row_to_config(row)
 
     async def patch_config(self, name: str, patch: dict) -> dict | None:
-        async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                row = await conn.fetchrow(
-                    "SELECT name, config, created_at, updated_at FROM agent_configs WHERE name = $1 FOR UPDATE",
-                    name,
-                )
-                if row is None:
-                    return None
-                existing = _row_to_config(row)
-                merged = _deep_merge(existing["config"], patch)
-                OrchidAgentConfig.model_validate(merged)
-                updated = await conn.fetchrow(
-                    """
+        async with self._pool.acquire() as conn, conn.transaction():
+            row = await conn.fetchrow(
+                "SELECT name, config, created_at, updated_at FROM agent_configs WHERE name = $1 FOR UPDATE",
+                name,
+            )
+            if row is None:
+                return None
+            existing = _row_to_config(row)
+            merged = _deep_merge(existing["config"], patch)
+            OrchidAgentConfig.model_validate(merged)
+            updated = await conn.fetchrow(
+                """
                     UPDATE agent_configs
                     SET config = $2, updated_at = NOW()
                     WHERE name = $1
                     RETURNING name, config, created_at, updated_at
                     """,
-                    name,
-                    json.dumps(merged),
-                )
-                return _row_to_config(updated)
+                name,
+                json.dumps(merged),
+            )
+            return _row_to_config(updated)
 
     async def delete_config(self, name: str) -> None:
         async with self._pool.acquire() as conn:
