@@ -129,3 +129,30 @@ class TestPostgresIngestionManifest:
         await manifest.close()
         close_mock.assert_awaited_once()
         assert manifest._pool is None
+
+    @pytest.mark.asyncio
+    async def test_should_skip_passes_scope_to_query(self):
+        from orchid_storage_postgres.ingestion_manifest import OrchidPostgresIngestionManifest
+
+        manifest = OrchidPostgresIngestionManifest(dsn="postgresql://localhost/db")
+        manifest._pool, conn = _mock_pool()
+        conn.fetchrow = AsyncMock(return_value=None)
+
+        await manifest.should_skip("src-1", "hash-1", "ns-1", scope="t1")
+
+        sql = conn.fetchrow.call_args[0][0]
+        assert "scope" in sql
+        assert conn.fetchrow.call_args[0][1:4] == ("src-1", "ns-1", "t1")
+
+    @pytest.mark.asyncio
+    async def test_record_passes_scope_to_query(self):
+        from orchid_storage_postgres.ingestion_manifest import OrchidPostgresIngestionManifest
+
+        manifest = OrchidPostgresIngestionManifest(dsn="postgresql://localhost/db")
+        manifest._pool, conn = _mock_pool()
+
+        await manifest.record("src-1", "hash-1", "ns-1", ["doc-1"], scope="t1")
+
+        sql = conn.execute.call_args[0][0]
+        assert "scope" in sql
+        assert conn.execute.call_args[0][1:5] == ("src-1", "ns-1", "t1", "hash-1")

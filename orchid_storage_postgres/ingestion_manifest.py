@@ -61,12 +61,14 @@ class OrchidPostgresIngestionManifest(OrchidIngestionManifest):
             await self._pool.close()
             self._pool = None
 
-    async def should_skip(self, source_id: str, content_hash: str, namespace: str) -> bool:
+    async def should_skip(self, source_id: str, content_hash: str, namespace: str, scope: str = "") -> bool:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT content_hash FROM ingestion_manifest WHERE source_id = $1 AND namespace = $2",
+                "SELECT content_hash FROM ingestion_manifest "
+                "WHERE source_id = $1 AND namespace = $2 AND scope = $3",
                 source_id,
                 namespace,
+                scope,
             )
         if row is None:
             return False
@@ -78,46 +80,52 @@ class OrchidPostgresIngestionManifest(OrchidIngestionManifest):
         content_hash: str,
         namespace: str,
         document_ids: list[str],
+        scope: str = "",
     ) -> None:
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """
                 INSERT INTO ingestion_manifest
-                    (source_id, namespace, content_hash, document_ids, indexed_at)
-                VALUES ($1, $2, $3, $4, NOW())
-                ON CONFLICT (source_id, namespace) DO UPDATE SET
+                    (source_id, namespace, scope, content_hash, document_ids, indexed_at)
+                VALUES ($1, $2, $3, $4, $5, NOW())
+                ON CONFLICT (source_id, namespace, scope) DO UPDATE SET
                     content_hash = EXCLUDED.content_hash,
                     document_ids = EXCLUDED.document_ids,
                     indexed_at = EXCLUDED.indexed_at
                 """,
                 source_id,
                 namespace,
+                scope,
                 content_hash,
                 document_ids,
             )
 
-    async def remove(self, source_id: str, namespace: str) -> None:
+    async def remove(self, source_id: str, namespace: str, scope: str = "") -> None:
         async with self._pool.acquire() as conn:
             await conn.execute(
-                "DELETE FROM ingestion_manifest WHERE source_id = $1 AND namespace = $2",
+                "DELETE FROM ingestion_manifest WHERE source_id = $1 AND namespace = $2 AND scope = $3",
                 source_id,
                 namespace,
+                scope,
             )
 
-    async def list_known(self, namespace: str) -> set[str]:
+    async def list_known(self, namespace: str, scope: str = "") -> set[str]:
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT source_id FROM ingestion_manifest WHERE namespace = $1",
+                "SELECT source_id FROM ingestion_manifest WHERE namespace = $1 AND scope = $2",
                 namespace,
+                scope,
             )
         return {row["source_id"] for row in rows}
 
-    async def get_document_ids(self, source_id: str, namespace: str) -> list[str]:
+    async def get_document_ids(self, source_id: str, namespace: str, scope: str = "") -> list[str]:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT document_ids FROM ingestion_manifest WHERE source_id = $1 AND namespace = $2",
+                "SELECT document_ids FROM ingestion_manifest "
+                "WHERE source_id = $1 AND namespace = $2 AND scope = $3",
                 source_id,
                 namespace,
+                scope,
             )
         if row is None:
             return []
