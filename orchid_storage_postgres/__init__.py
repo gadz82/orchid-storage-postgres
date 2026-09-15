@@ -44,6 +44,7 @@ from .event_storage import (
     PostgresSignalStore,
     PostgresTriggerStore,
 )
+from .ingestion_manifest import OrchidPostgresIngestionManifest
 from .mcp_client_registration_store import OrchidPostgresMCPClientRegistrationStore
 from .mcp_gateway_state_store import OrchidPostgresMCPGatewayStateStore
 from .mcp_token_store import OrchidPostgresMCPTokenStore
@@ -52,6 +53,7 @@ from .visibility import _build_postgres_filter
 __all__ = [
     "OrchidPostgresChatStorage",
     "OrchidPostgresConfigStorage",
+    "OrchidPostgresIngestionManifest",
     "OrchidPostgresMCPClientRegistrationStore",
     "OrchidPostgresMCPGatewayStateStore",
     "OrchidPostgresMCPTokenStore",
