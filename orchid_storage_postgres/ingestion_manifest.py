@@ -64,8 +64,7 @@ class OrchidPostgresIngestionManifest(OrchidIngestionManifest):
     async def should_skip(self, source_id: str, content_hash: str, namespace: str, scope: str = "") -> bool:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT content_hash FROM ingestion_manifest "
-                "WHERE source_id = $1 AND namespace = $2 AND scope = $3",
+                "SELECT content_hash FROM ingestion_manifest WHERE source_id = $1 AND namespace = $2 AND scope = $3",
                 source_id,
                 namespace,
                 scope,
@@ -121,8 +120,7 @@ class OrchidPostgresIngestionManifest(OrchidIngestionManifest):
     async def get_document_ids(self, source_id: str, namespace: str, scope: str = "") -> list[str]:
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT document_ids FROM ingestion_manifest "
-                "WHERE source_id = $1 AND namespace = $2 AND scope = $3",
+                "SELECT document_ids FROM ingestion_manifest WHERE source_id = $1 AND namespace = $2 AND scope = $3",
                 source_id,
                 namespace,
                 scope,
