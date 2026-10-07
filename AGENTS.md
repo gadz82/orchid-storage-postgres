@@ -20,8 +20,8 @@ Orchid AI framework. It provides PostgreSQL-backed implementations of
 
 Plus the unified migration runner (`PostgresMigrationRunner`,
 `migrations/v001_initial_schema.py`) which provisions every
-framework-owned table in a single pass via the shared
-`orchid_ai.persistence.migrations._schema_ddl.PG_UP` block.
+framework-owned table in a single pass via this package's
+`migrations/_schema_ddl.py` (`PG_UP`) block.
 
 ## Auto-Registration
 
@@ -81,9 +81,8 @@ events:
 
 Migration `v001` creates **every framework-owned table in a single
 pass**, so a single DSN can back chat + config + MCP + events.  The
-DDL is sourced from
-`orchid_ai.persistence.migrations._schema_ddl.PG_UP` — the same block
-the SQLite migration uses (in its `SQLITE_UP` sibling).
+DDL is sourced from this package's
+`migrations/_schema_ddl.py` (`PG_UP`).
 
 Tables created:
 

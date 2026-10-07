@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from orchid_ai.persistence.migrations._schema_ddl import PG_UP
+from ._schema_ddl import PG_UP
 
 logger = logging.getLogger(__name__)
 
