@@ -1,8 +1,8 @@
 """PostgreSQL config storage — :class:`OrchidConfigStorage` backed by asyncpg.
 
 Uses the same migration runner as :class:`OrchidPostgresChatStorage` —
-the shared ``_schema_ddl.py`` / v001 migration is applied once per
-database regardless of which storage class initiates it.
+this package's v001 migration is applied once per database regardless
+of which storage class initiates it.
 ``CREATE TABLE IF NOT EXISTS`` makes this safe to call multiple times.
 
 Configuration::
