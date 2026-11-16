@@ -21,6 +21,7 @@ from .migrations import PostgresMigrationRunner
 logger = logging.getLogger(__name__)
 
 
+# ORCHID-MEM: 01a1a0c1-dc9c-7bcd-bd96-1cfe8dd8f581 — PostgreSQL chat storage and migrations
 class OrchidPostgresChatStorage(OrchidChatStorage):
     """Async PostgreSQL storage for chat sessions and messages.
 
