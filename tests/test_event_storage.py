@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import datetime as _dt
+import json
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from orchid_ai.core.events.job import JobRun, JobSpec, JobStatus
 from orchid_ai.core.events.signal import Signal
 from orchid_ai.core.events.store import OrchidScheduleRecord, OrchidTriggerRecord
@@ -18,6 +18,7 @@ from orchid_storage_postgres.event_storage import (
     PostgresScheduleStore,
     PostgresSignalStore,
     PostgresTriggerStore,
+    _jobspec_to_dict,
     _maybe_load_jsonb,
     _row_to_run,
     _row_to_schedule,
@@ -57,9 +58,8 @@ class TestFacade:
     @pytest.mark.asyncio
     async def test_init_db_missing_asyncpg_raises_import_error(self):
         store = PostgresEventStorage(dsn="postgresql://x")
-        with patch.dict("sys.modules", {"asyncpg": None}):
-            with pytest.raises(ImportError):
-                await store.init_db()
+        with patch.dict("sys.modules", {"asyncpg": None}), pytest.raises(ImportError):
+            await store.init_db()
 
 
 # ── Signal store ────────────────────────────────────────────
@@ -275,6 +275,113 @@ class TestRowMappers:
         result = _row_to_trigger(row)
         assert result.trigger_id == "t1"
         assert result.version == 2
+
+    def test_jobspec_to_dict_includes_pipeline_fields(self):
+        spec = JobSpec(
+            trigger_id="t-pipe",
+            signal_id=uuid.uuid4(),
+            agent_name="",
+            prompt="",
+            identity_claim={"mode": "service_account", "name": "digest-bot"},
+            correlation_id=None,
+            parallelism_key="sa:t:bot",
+            chat_binding={"chat_id": "C-1"},
+            proactive_chat=True,
+            target="pipeline",
+            pipeline_name="weekly_digest",
+            pipeline_input={"topic": "release notes"},
+            persist_graph=True,
+        )
+
+        payload = _jobspec_to_dict(spec)
+
+        assert payload["target"] == "pipeline"
+        assert payload["pipeline_name"] == "weekly_digest"
+        assert payload["pipeline_input"] == {"topic": "release notes"}
+        assert payload["persist_graph"] is True
+        assert payload["proactive_chat"] is True
+
+    def test_jobspec_round_trip_keeps_every_field(self):
+        now = _dt.datetime.now(tz=_dt.UTC)
+        spec = JobSpec(
+            trigger_id="t-pipe",
+            signal_id=uuid.uuid4(),
+            agent_name="",
+            prompt="",
+            identity_claim={"mode": "service_account", "name": "digest-bot"},
+            correlation_id="corr",
+            parallelism_key="sa:t:bot",
+            visibility="admin",
+            visibility_user_id=None,
+            chat_binding={"chat_id": "C-1", "on_failure": "silent"},
+            proactive_chat=True,
+            target="pipeline",
+            pipeline_name="weekly_digest",
+            pipeline_input={"topic": "release notes", "limit": 3},
+            persist_graph=True,
+        )
+        row = {
+            "run_id": uuid.uuid4(),
+            # Cross the same JSON boundary the JSONB column uses.
+            "spec": json.loads(json.dumps(_jobspec_to_dict(spec))),
+            "attempt_number": 1,
+            "status": JobStatus.PENDING.value,
+            "queued_at": now,
+            "started_at": None,
+            "finished_at": None,
+            "result": None,
+            "error": None,
+            "next_retry_at": None,
+            "metadata": {},
+            "visibility": "admin",
+            "visibility_user_id": None,
+        }
+
+        run = _row_to_run(row)
+
+        assert run.spec.target == "pipeline"
+        assert run.spec.pipeline_name == "weekly_digest"
+        assert run.spec.pipeline_input == {"topic": "release notes", "limit": 3}
+        assert run.spec.persist_graph is True
+        assert run.spec.proactive_chat is True
+        assert run.spec.chat_binding == {"chat_id": "C-1", "on_failure": "silent"}
+
+    def test_row_to_run_defaults_new_fields_for_old_rows(self):
+        now = _dt.datetime.now(tz=_dt.UTC)
+        row = {
+            "run_id": uuid.uuid4(),
+            "spec": {
+                "trigger_id": "t1",
+                "signal_id": str(uuid.uuid4()),
+                "agent_name": "agent-a",
+                "prompt": "hello",
+                "identity_claim": {"tenant_key": "t"},
+                "correlation_id": None,
+                "parallelism_key": "tenant:t",
+                "visibility": "tenant",
+                "visibility_user_id": None,
+                "chat_binding": None,
+            },
+            "attempt_number": 1,
+            "status": JobStatus.PENDING.value,
+            "queued_at": now,
+            "started_at": None,
+            "finished_at": None,
+            "result": None,
+            "error": None,
+            "next_retry_at": None,
+            "metadata": {},
+            "visibility": "tenant",
+            "visibility_user_id": None,
+        }
+
+        run = _row_to_run(row)
+
+        assert run.spec.target == "agent"
+        assert run.spec.pipeline_name is None
+        assert run.spec.pipeline_input is None
+        assert run.spec.persist_graph is False
+        assert run.spec.proactive_chat is False
 
     def test_row_to_run(self):
         now = _dt.datetime.now(tz=_dt.UTC)
